@@ -7,6 +7,8 @@
 
 #define dht_dpin 4
 DHT dht(dht_dpin, DHTTYPE);
+// Pin para el Fotoresistor
+#define LDR_APIN A0
 
 #include "secrets.h"
 
@@ -31,6 +33,8 @@ const char MQTT_SUB_TOPIC[] = HOSTNAME "/";
 const char MQTT_PUB_TOPIC1[] = "humedad/bogota/" HOSTNAME;
 //Tópico al que se enviarán los datos de temperatura
 const char MQTT_PUB_TOPIC2[] = "temperatura/bogota/" HOSTNAME;
+//Tópico al que se enviarán los datos de luminosidad
+const char MQTT_PUB_TOPIC3[] = "luminosidad/bogota/" HOSTNAME;
 
 //////////////////////////////////////////////////////
 
@@ -174,6 +178,8 @@ void loop()
   //Lee los datos del sensor
   float h = dht.readHumidity();
   float t = dht.readTemperature();
+  int rawL = analogRead(LDR_APIN);        // 0..1023
+  float lum = (rawL / 1023.0) * 100.0;    // % relativo (0..100)
   //Transforma la información a la notación JSON para poder enviar los datos 
   //El mensaje que se envía es de la forma {"value": x}, donde x es el valor de temperatura o humedad
   
@@ -185,6 +191,10 @@ void loop()
   json = "{\"value\": "+ String(t) + "}";
   char payload2[json.length()+1];
   json.toCharArray(payload2,json.length()+1);
+  //JSON para luminosidad
+  json = "{\"value\": "+ String(lum) + "}";
+  char payload3[json.length()+1];
+  json.toCharArray(payload3, json.length()+1);
 
   //Si los valores recolectados no son indefinidos, se envían a los tópicos correspondientes
   if ( !isnan(h) && !isnan(t) ) {
@@ -192,6 +202,8 @@ void loop()
     client.publish(MQTT_PUB_TOPIC1, payload1, false);
     //Publica en el tópico de la temperatura
     client.publish(MQTT_PUB_TOPIC2, payload2, false);
+    //Publica en el tópico de la luminosidad
+    client.publish(MQTT_PUB_TOPIC3, payload3, false);
   }
 
   //Imprime en el monitor serial la información recolectada
@@ -201,6 +213,10 @@ void loop()
   Serial.print(MQTT_PUB_TOPIC2);
   Serial.print(" -> ");
   Serial.println(payload2);
+  Serial.print(MQTT_PUB_TOPIC3);
+  Serial.print(" -> ");
+  Serial.println(payload3);
+
   /*Espera 5 segundos antes de volver a ejecutar la función loop*/
   delay(5000);
 }
